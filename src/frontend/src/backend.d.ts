@@ -69,6 +69,7 @@ export interface backendInterface {
     acceptServiceRequest(requestId: bigint): Promise<void>;
     addRating(requestId: bigint, ratingValue: bigint, comment: string): Promise<bigint>;
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
+    cancelServiceRequest(requestId: bigint): Promise<void>;
     createPayment(requestId: bigint, method: PaymentMethod): Promise<bigint>;
     getAllProviders(): Promise<Array<UserProfile>>;
     getAllProvidersByPhone(): Promise<Array<UserProfile>>;

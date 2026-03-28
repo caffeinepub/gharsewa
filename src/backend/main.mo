@@ -207,6 +207,28 @@ actor {
     newRequest.id;
   };
 
+  public shared ({ caller }) func cancelServiceRequest(requestId : Nat) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can cancel requests");
+    };
+    let request = switch (requests.get(requestId)) {
+      case (null) { Runtime.trap("Request not found") };
+      case (?r) { r };
+    };
+    if (request.customer != caller) {
+      Runtime.trap("Unauthorized: Only the customer can cancel this request");
+    };
+    if (request.status != #pending and request.status != #accepted) {
+      Runtime.trap("Request cannot be cancelled in its current state");
+    };
+    let updatedRequest = {
+      request with
+      status = #cancelled;
+      updatedAt = Time.now();
+    };
+    requests.add(requestId, updatedRequest);
+  };
+
   public shared ({ caller }) func acceptServiceRequest(requestId : Nat) : async () {
     if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
       Runtime.trap("Unauthorized: Only users can accept requests");

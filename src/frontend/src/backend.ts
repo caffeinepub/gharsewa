@@ -176,6 +176,7 @@ export interface backendInterface {
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
     submitServiceRequest(request: ServiceRequest): Promise<bigint>;
     updateRequestPrice(requestId: bigint, newPrice: bigint): Promise<void>;
+    cancelServiceRequest(requestId: bigint): Promise<void>;
 }
 import type { PaymentMethod as _PaymentMethod, Role as _Role, ServiceRequest as _ServiceRequest, ServiceType as _ServiceType, Status as _Status, Urgency as _Urgency, UserProfile as _UserProfile, UserRole as _UserRole } from "./declarations/backend.did.d.ts";
 export class Backend implements backendInterface {
@@ -569,6 +570,20 @@ export class Backend implements backendInterface {
             }
         } else {
             const result = await this.actor.updateRequestPrice(arg0, arg1);
+            return result;
+        }
+    }
+    async cancelServiceRequest(arg0: bigint): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.cancelServiceRequest(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.cancelServiceRequest(arg0);
             return result;
         }
     }

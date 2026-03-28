@@ -65,8 +65,11 @@ interface Props {
 
 export default function ProviderDashboard({ onLogout }: Props) {
   const { identity, clear } = useInternetIdentity();
-  const { data: pendingRequests, isLoading: pendingLoading } =
-    usePendingRequests();
+  const {
+    data: pendingRequests,
+    isLoading: pendingLoading,
+    isError: pendingError,
+  } = usePendingRequests();
   const { data: myRequests, isLoading: myLoading } = useProviderRequests();
   const { data: ratings, isLoading: ratingsLoading } = useMyRatings();
   const acceptRequest = useAcceptRequest();
@@ -93,6 +96,18 @@ export default function ProviderDashboard({ onLogout }: Props) {
   const visiblePending =
     pendingRequests?.filter((r) => !declinedIds.has(r.id.toString())) ?? [];
 
+  // Update browser tab title when there are pending jobs
+  useEffect(() => {
+    if (visiblePending.length > 0) {
+      document.title = `(${visiblePending.length}) New Job - GharSewa`;
+    } else {
+      document.title = "GharSewa - Provider";
+    }
+    return () => {
+      document.title = "GharSewa";
+    };
+  }, [visiblePending.length]);
+
   // Watch for new pending requests and notify
   useEffect(() => {
     const currentCount = visiblePending.length;
@@ -101,6 +116,22 @@ export default function ProviderDashboard({ onLogout }: Props) {
       prevPendingCount.current !== undefined &&
       currentCount > prevPendingCount.current
     ) {
+      // Play alert sound via Web Audio API
+      try {
+        const ctx = new AudioContext();
+        const osc = ctx.createOscillator();
+        const gain = ctx.createGain();
+        osc.connect(gain);
+        gain.connect(ctx.destination);
+        osc.frequency.value = 880;
+        gain.gain.setValueAtTime(0.3, ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + 0.4);
+        osc.start(ctx.currentTime);
+        osc.stop(ctx.currentTime + 0.4);
+      } catch {
+        // Audio not supported, ignore
+      }
+
       // Fire browser push notification
       if (
         typeof Notification !== "undefined" &&
@@ -299,6 +330,20 @@ export default function ProviderDashboard({ onLogout }: Props) {
                   {[1, 2, 3].map((i) => (
                     <Skeleton key={i} className="h-36 w-full rounded-2xl" />
                   ))}
+                </div>
+              ) : pendingError ? (
+                <div
+                  className="bg-amber-50 border border-amber-200 rounded-2xl p-6 text-center"
+                  data-ocid="incoming.error_state"
+                >
+                  <div className="text-3xl mb-2">⚠️</div>
+                  <p className="font-semibold text-amber-800">
+                    Unable to load job requests
+                  </p>
+                  <p className="text-sm text-amber-700 mt-1">
+                    Make sure you have completed onboarding and are logged in as
+                    a Service Provider.
+                  </p>
                 </div>
               ) : visiblePending.length === 0 ? (
                 <div

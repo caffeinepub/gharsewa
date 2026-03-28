@@ -61,6 +61,7 @@ export interface _SERVICE {
   'acceptServiceRequest' : ActorMethod<[bigint], undefined>,
   'addRating' : ActorMethod<[bigint, bigint, string], bigint>,
   'assignCallerUserRole' : ActorMethod<[Principal, UserRole], undefined>,
+  'cancelServiceRequest' : ActorMethod<[bigint], undefined>,
   'createPayment' : ActorMethod<[bigint, PaymentMethod], bigint>,
   'getAllProviders' : ActorMethod<[], Array<UserProfile>>,
   'getAllProvidersByPhone' : ActorMethod<[], Array<UserProfile>>,

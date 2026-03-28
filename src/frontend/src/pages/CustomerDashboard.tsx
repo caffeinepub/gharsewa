@@ -12,6 +12,7 @@ import {
   LogOut,
   PlusCircle,
   TrendingUp,
+  XCircle,
 } from "lucide-react";
 import { AnimatePresence, motion } from "motion/react";
 import { useState } from "react";
@@ -26,6 +27,7 @@ import PaymentModal from "../components/PaymentModal";
 import RatingModal from "../components/RatingModal";
 import { useInternetIdentity } from "../hooks/useInternetIdentity";
 import {
+  useCancelRequest,
   useCustomerRequests,
   useSubmitRequest,
   useUpdatePrice,
@@ -77,6 +79,7 @@ export default function CustomerDashboard({ onLogout }: Props) {
   const { data: requests, isLoading } = useCustomerRequests();
   const submitRequest = useSubmitRequest();
   const updatePrice = useUpdatePrice();
+  const cancelRequest = useCancelRequest();
 
   const [tab, setTab] = useState<"post" | "active" | "history">("post");
   const [selectedService, setSelectedService] = useState<ServiceType | null>(
@@ -161,6 +164,15 @@ export default function CustomerDashboard({ onLogout }: Props) {
       setNewPrice("");
     } catch {
       toast.error("Failed to update price.");
+    }
+  };
+
+  const handleCancel = async (requestId: bigint) => {
+    try {
+      await cancelRequest.mutateAsync(requestId);
+      toast.success("Request cancelled.");
+    } catch {
+      toast.error("Failed to cancel request.");
     }
   };
 
@@ -492,7 +504,7 @@ export default function CustomerDashboard({ onLogout }: Props) {
                         <span className="font-bold text-mustard">
                           NRs {req.price.toString()}
                         </span>
-                        <div className="flex gap-2">
+                        <div className="flex gap-2 flex-wrap justify-end">
                           {req.status === Status.pending &&
                             (increasePriceId === req.id ? (
                               <div className="flex items-center gap-2">
@@ -553,6 +565,25 @@ export default function CustomerDashboard({ onLogout }: Props) {
                               data-ocid="active.primary_button"
                             >
                               💳 Pay Now
+                            </Button>
+                          )}
+                          {(req.status === Status.pending ||
+                            req.status === Status.accepted) && (
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-8 text-xs border-red-400 text-red-500 hover:bg-red-50"
+                              onClick={() => handleCancel(req.id)}
+                              disabled={cancelRequest.isPending}
+                              data-ocid="active.delete_button"
+                            >
+                              {cancelRequest.isPending ? (
+                                <Loader2 className="w-3 h-3 animate-spin" />
+                              ) : (
+                                <>
+                                  <XCircle className="w-3 h-3 mr-1" /> Cancel
+                                </>
+                              )}
                             </Button>
                           )}
                         </div>

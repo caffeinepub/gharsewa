@@ -59,7 +59,7 @@ export function usePendingRequests() {
       return actor.getServiceRequestsByStatus(Status.pending);
     },
     enabled: !!actor && !isFetching && !!identity,
-    refetchInterval: 8000,
+    refetchInterval: 5000,
   });
 }
 
@@ -181,5 +181,20 @@ export function useAddRating() {
       return actor.addRating(requestId, ratingValue, comment);
     },
     onSuccess: () => qc.invalidateQueries({ queryKey: ["customerRequests"] }),
+  });
+}
+
+export function useCancelRequest() {
+  const { actor } = useActor();
+  const qc = useQueryClient();
+  return useMutation({
+    mutationFn: async (requestId: bigint) => {
+      if (!actor) throw new Error("Not connected");
+      return actor.cancelServiceRequest(requestId);
+    },
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["customerRequests"] });
+      qc.invalidateQueries({ queryKey: ["pendingRequests"] });
+    },
   });
 }
