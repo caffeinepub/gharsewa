@@ -65,6 +65,7 @@ export const ServiceRequest = IDL.Record({
   'description' : IDL.Text,
   'updatedAt' : IDL.Int,
   'price' : IDL.Nat,
+  'location' : IDL.Text,
 });
 
 export const idlService = IDL.Service({
@@ -127,6 +128,7 @@ export const idlService = IDL.Service({
   'markPaymentPaid' : IDL.Func([IDL.Nat], [], []),
   'markRequestComplete' : IDL.Func([IDL.Nat], [], []),
   'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
+  'startServiceRequest' : IDL.Func([IDL.Nat], [], []),
   'submitServiceRequest' : IDL.Func([ServiceRequest], [IDL.Nat], []),
   'updateRequestPrice' : IDL.Func([IDL.Nat, IDL.Nat], [], []),
 });
@@ -188,6 +190,7 @@ export const idlFactory = ({ IDL }) => {
     'description' : IDL.Text,
     'updatedAt' : IDL.Int,
     'price' : IDL.Nat,
+    'location' : IDL.Text,
   });
   
   return IDL.Service({
@@ -254,6 +257,7 @@ export const idlFactory = ({ IDL }) => {
     'markPaymentPaid' : IDL.Func([IDL.Nat], [], []),
     'markRequestComplete' : IDL.Func([IDL.Nat], [], []),
     'saveCallerUserProfile' : IDL.Func([UserProfile], [], []),
+    'startServiceRequest' : IDL.Func([IDL.Nat], [], []),
     'submitServiceRequest' : IDL.Func([ServiceRequest], [IDL.Nat], []),
     'updateRequestPrice' : IDL.Func([IDL.Nat, IDL.Nat], [], []),
   });

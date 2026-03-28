@@ -50,7 +50,7 @@ export function useCustomerRequests() {
 }
 
 export function usePendingRequests() {
-  const { actor, isFetching } = useActor();
+  const { actor } = useActor();
   const { identity } = useInternetIdentity();
   return useQuery<ServiceRequest[]>({
     queryKey: ["pendingRequests"],
@@ -58,13 +58,18 @@ export function usePendingRequests() {
       if (!actor) return [];
       return actor.getServiceRequestsByStatus(Status.pending);
     },
-    enabled: !!actor && !isFetching && !!identity,
-    refetchInterval: 5000,
+    enabled: !!actor && !!identity,
+    refetchInterval: 3000,
+    refetchIntervalInBackground: true,
+    refetchOnMount: "always",
+    refetchOnWindowFocus: true,
+    retry: 3,
+    staleTime: 0,
   });
 }
 
 export function useProviderRequests() {
-  const { actor, isFetching } = useActor();
+  const { actor } = useActor();
   const { identity } = useInternetIdentity();
   return useQuery<ServiceRequest[]>({
     queryKey: ["providerRequests"],
@@ -72,13 +77,14 @@ export function useProviderRequests() {
       if (!actor || !identity) return [];
       return actor.getRequestsByProvider(identity.getPrincipal());
     },
-    enabled: !!actor && !isFetching && !!identity,
-    refetchInterval: 10000,
+    enabled: !!actor && !!identity,
+    refetchInterval: 5000,
+    refetchIntervalInBackground: true,
   });
 }
 
 export function useMyRatings() {
-  const { actor, isFetching } = useActor();
+  const { actor } = useActor();
   const { identity } = useInternetIdentity();
   return useQuery<Rating[]>({
     queryKey: ["myRatings"],
@@ -86,7 +92,7 @@ export function useMyRatings() {
       if (!actor || !identity) return [];
       return actor.getUserRatings(identity.getPrincipal());
     },
-    enabled: !!actor && !isFetching && !!identity,
+    enabled: !!actor && !!identity,
   });
 }
 
@@ -98,7 +104,10 @@ export function useSubmitRequest() {
       if (!actor) throw new Error("Not connected");
       return actor.submitServiceRequest(request);
     },
-    onSuccess: () => qc.invalidateQueries({ queryKey: ["customerRequests"] }),
+    onSuccess: () => {
+      qc.invalidateQueries({ queryKey: ["customerRequests"] });
+      qc.invalidateQueries({ queryKey: ["pendingRequests"] });
+    },
   });
 }
 

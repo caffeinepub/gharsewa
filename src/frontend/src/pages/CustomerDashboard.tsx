@@ -10,6 +10,7 @@ import {
   Clock,
   Loader2,
   LogOut,
+  MapPin,
   PlusCircle,
   TrendingUp,
   XCircle,
@@ -23,6 +24,8 @@ import {
   Status,
   Urgency,
 } from "../backend.d";
+import MapDisplay from "../components/MapDisplay";
+import MapPicker from "../components/MapPicker";
 import PaymentModal from "../components/PaymentModal";
 import RatingModal from "../components/RatingModal";
 import { useInternetIdentity } from "../hooks/useInternetIdentity";
@@ -88,6 +91,7 @@ export default function CustomerDashboard({ onLogout }: Props) {
   const [selectedUrgency, setSelectedUrgency] = useState<Urgency | null>(null);
   const [price, setPrice] = useState("");
   const [description, setDescription] = useState("");
+  const [location, setLocation] = useState("");
   const [formErrors, setFormErrors] = useState<Record<string, string>>({});
 
   const [paymentRequest, setPaymentRequest] = useState<ServiceRequest | null>(
@@ -118,6 +122,7 @@ export default function CustomerDashboard({ onLogout }: Props) {
     if (!price || Number.isNaN(Number(price)) || Number(price) <= 0)
       e.price = "Enter a valid price";
     if (!description.trim()) e.description = "Add a description";
+    if (!location.trim()) e.location = "Please enter the work location";
     setFormErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -134,6 +139,7 @@ export default function CustomerDashboard({ onLogout }: Props) {
       updatedAt: BigInt(Date.now()),
       description: description.trim(),
       price: BigInt(Math.round(Number(price))),
+      location: location.trim(),
     };
     try {
       await submitRequest.mutateAsync(req);
@@ -142,6 +148,7 @@ export default function CustomerDashboard({ onLogout }: Props) {
       setSelectedUrgency(null);
       setPrice("");
       setDescription("");
+      setLocation("");
       setFormErrors({});
       setTab("active");
     } catch {
@@ -378,6 +385,38 @@ export default function CustomerDashboard({ onLogout }: Props) {
                   </div>
                 </div>
 
+                {/* Work Location */}
+                <div className="mb-4">
+                  <Label
+                    htmlFor="location"
+                    className="font-medium flex items-center gap-1.5"
+                  >
+                    <MapPin className="w-3.5 h-3.5 text-terracotta" />
+                    Work Location
+                  </Label>
+                  {formErrors.location && (
+                    <p
+                      className="text-xs text-destructive mt-1 mb-1"
+                      data-ocid="job.error_state"
+                    >
+                      {formErrors.location}
+                    </p>
+                  )}
+                  <div
+                    className={`mt-1 ${formErrors.location ? "ring-1 ring-destructive rounded-xl" : ""}`}
+                  >
+                    <MapPicker
+                      value={location}
+                      onChange={(address, lat, lng) => {
+                        const val =
+                          lat !== 0 ? `${lat},${lng}|${address}` : address;
+                        setLocation(val);
+                        setFormErrors((p) => ({ ...p, location: "" }));
+                      }}
+                    />
+                  </div>
+                </div>
+
                 {/* Description */}
                 <div className="mb-5">
                   <Label htmlFor="desc" className="font-medium">
@@ -497,6 +536,12 @@ export default function CustomerDashboard({ onLogout }: Props) {
                           {badge.label}
                         </span>
                       </div>
+                      {req.location && (
+                        <div className="flex items-center gap-1.5 mb-2 text-sm font-medium text-terracotta">
+                          <MapPin className="w-3.5 h-3.5 flex-shrink-0" />
+                          <span>{req.location}</span>
+                        </div>
+                      )}
                       <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
                         {req.description}
                       </p>
@@ -652,6 +697,12 @@ export default function CustomerDashboard({ onLogout }: Props) {
                           {badge.label}
                         </span>
                       </div>
+                      {req.location && (
+                        <div className="flex items-center gap-1.5 mb-1.5 text-xs text-muted-foreground">
+                          <MapPin className="w-3 h-3 flex-shrink-0" />
+                          <span>{req.location}</span>
+                        </div>
+                      )}
                       <p className="text-sm text-muted-foreground line-clamp-1 mb-3">
                         {req.description}
                       </p>

@@ -18,6 +18,7 @@ export interface ServiceRequest {
     description: string;
     updatedAt: bigint;
     price: bigint;
+    location: string;
 }
 export interface Rating {
     provider: Principal;
@@ -92,6 +93,7 @@ export interface backendInterface {
     markPaymentPaid(paymentId: bigint): Promise<void>;
     markRequestComplete(requestId: bigint): Promise<void>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
+    startServiceRequest(requestId: bigint): Promise<void>;
     submitServiceRequest(request: ServiceRequest): Promise<bigint>;
     updateRequestPrice(requestId: bigint, newPrice: bigint): Promise<void>;
 }

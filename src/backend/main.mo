@@ -8,8 +8,11 @@ import Time "mo:core/Time";
 import Principal "mo:core/Principal";
 import Nat "mo:core/Nat";
 import Int "mo:core/Int";
+
+
 import MixinAuthorization "authorization/MixinAuthorization";
 import AccessControl "authorization/access-control";
+
 
 actor {
   // Types
@@ -21,7 +24,7 @@ actor {
   let accessControlState = AccessControl.initState();
   include MixinAuthorization(accessControlState);
 
-  type ServiceType = {
+  public type ServiceType = {
     #cleaning;
     #plumbing;
     #electrical;
@@ -29,13 +32,13 @@ actor {
     #moving;
   };
 
-  type Urgency = {
+  public type Urgency = {
     #low;
     #medium;
     #high;
   };
 
-  type Status = {
+  public type Status = {
     #pending;
     #accepted;
     #inProgress;
@@ -43,15 +46,22 @@ actor {
     #cancelled;
   };
 
-  type PaymentMethod = {
+  public type PaymentMethod = {
     #esewa;
     #khalti;
     #mobile_banking;
   };
 
-  type PaymentStatus = {
+  public type PaymentStatus = {
     #pending;
     #paid;
+  };
+
+  public type UserProfile = {
+    name : Text;
+    phone : Text;
+    role : Role;
+    createdAt : Int;
   };
 
   public type ServiceRequest = {
@@ -62,6 +72,7 @@ actor {
     urgency : Urgency;
     status : Status;
     description : Text;
+    location : Text;
     price : Nat;
     createdAt : Int;
     updatedAt : Int;
@@ -85,13 +96,6 @@ actor {
     status : PaymentStatus;
     createdAt : Int;
     updatedAt : Int;
-  };
-
-  public type UserProfile = {
-    name : Text;
-    phone : Text;
-    role : Role;
-    createdAt : Int;
   };
 
   module UserProfile {
@@ -122,14 +126,47 @@ actor {
   };
 
   // Storage
-  let userProfiles = Map.empty<Principal, UserProfile>();
-  let requests = Map.empty<Nat, ServiceRequest>();
-  let ratings = Map.empty<Nat, Rating>();
-  let payments = Map.empty<Nat, Payment>();
+  var userProfiles = Map.empty<Principal, UserProfile>();
+  var requests = Map.empty<Nat, ServiceRequest>();
+  var ratings = Map.empty<Nat, Rating>();
+  var payments = Map.empty<Nat, Payment>();
 
   var nextRequestId = 0;
   var nextRatingId = 0;
   var nextPaymentId = 0;
+
+  // Stable storage for preupgrade/postupgrade
+  stable var userProfileEntries : [(Principal, UserProfile)] = [];
+  stable var requestEntries : [(Nat, ServiceRequest)] = [];
+  stable var ratingEntries : [(Nat, Rating)] = [];
+  stable var paymentEntries : [(Nat, Payment)] = [];
+  stable var nextRequestIdStable = 0;
+  stable var nextRatingIdStable = 0;
+  stable var nextPaymentIdStable = 0;
+
+  system func preupgrade() {
+    userProfileEntries := userProfiles.toArray();
+    requestEntries := requests.toArray();
+    ratingEntries := ratings.toArray();
+    paymentEntries := payments.toArray();
+    nextRequestIdStable := nextRequestId;
+    nextRatingIdStable := nextRatingId;
+    nextPaymentIdStable := nextPaymentId;
+  };
+
+  system func postupgrade() {
+    userProfiles := Map.fromIter(userProfileEntries.values());
+    requests := Map.fromIter(requestEntries.values());
+    ratings := Map.fromIter(ratingEntries.values());
+    payments := Map.fromIter(paymentEntries.values());
+    nextRequestId := nextRequestIdStable;
+    nextRatingId := nextRatingIdStable;
+    nextPaymentId := nextPaymentIdStable;
+    userProfileEntries := [];
+    requestEntries := [];
+    ratingEntries := [];
+    paymentEntries := [];
+  };
 
   // User Management
   public shared ({ caller }) func saveCallerUserProfile(profile : UserProfile) : async () {
@@ -249,6 +286,38 @@ actor {
       request with
       provider = ?caller;
       status = #accepted;
+      updatedAt = Time.now();
+    };
+    requests.add(requestId, updatedRequest);
+  };
+
+  public shared ({ caller }) func startServiceRequest(requestId : Nat) : async () {
+    if (not (AccessControl.hasPermission(accessControlState, caller, #user))) {
+      Runtime.trap("Unauthorized: Only users can start requests");
+    };
+    let profile = switch (userProfiles.get(caller)) {
+      case (null) { Runtime.trap("Unauthorized: Only providers can start requests") };
+      case (?p) { p };
+    };
+    if (profile.role != #provider) {
+      Runtime.trap("Unauthorized: Only providers can start requests");
+    };
+    let request = switch (requests.get(requestId)) {
+      case (null) { Runtime.trap("Request not found") };
+      case (?r) { r };
+    };
+    switch (request.provider) {
+      case (null) { Runtime.trap("Provider not assigned") };
+      case (?p) {
+        if (p != caller) {
+          Runtime.trap("Unauthorized: Only the assigned provider can start this request");
+        };
+      };
+    };
+    if (request.status != #accepted) { Runtime.trap("Request not accepted") };
+    let updatedRequest = {
+      request with
+      status = #inProgress;
       updatedAt = Time.now();
     };
     requests.add(requestId, updatedRequest);

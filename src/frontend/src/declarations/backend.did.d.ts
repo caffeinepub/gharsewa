@@ -33,6 +33,7 @@ export interface ServiceRequest {
   'description' : string,
   'updatedAt' : bigint,
   'price' : bigint,
+  'location' : string,
 }
 export type ServiceType = { 'cleaning' : null } |
   { 'plumbing' : null } |
@@ -87,6 +88,7 @@ export interface _SERVICE {
   'markPaymentPaid' : ActorMethod<[bigint], undefined>,
   'markRequestComplete' : ActorMethod<[bigint], undefined>,
   'saveCallerUserProfile' : ActorMethod<[UserProfile], undefined>,
+  'startServiceRequest' : ActorMethod<[bigint], undefined>,
   'submitServiceRequest' : ActorMethod<[ServiceRequest], bigint>,
   'updateRequestPrice' : ActorMethod<[bigint, bigint], undefined>,
 }

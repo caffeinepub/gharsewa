@@ -100,6 +100,7 @@ export interface ServiceRequest {
     description: string;
     updatedAt: bigint;
     price: bigint;
+    location: string;
 }
 export interface Rating {
     provider: Principal;
@@ -152,6 +153,7 @@ export interface backendInterface {
     acceptServiceRequest(requestId: bigint): Promise<void>;
     addRating(requestId: bigint, ratingValue: bigint, comment: string): Promise<bigint>;
     assignCallerUserRole(user: Principal, role: UserRole): Promise<void>;
+    cancelServiceRequest(requestId: bigint): Promise<void>;
     createPayment(requestId: bigint, method: PaymentMethod): Promise<bigint>;
     getAllProviders(): Promise<Array<UserProfile>>;
     getAllProvidersByPhone(): Promise<Array<UserProfile>>;
@@ -174,9 +176,9 @@ export interface backendInterface {
     markPaymentPaid(paymentId: bigint): Promise<void>;
     markRequestComplete(requestId: bigint): Promise<void>;
     saveCallerUserProfile(profile: UserProfile): Promise<void>;
+    startServiceRequest(requestId: bigint): Promise<void>;
     submitServiceRequest(request: ServiceRequest): Promise<bigint>;
     updateRequestPrice(requestId: bigint, newPrice: bigint): Promise<void>;
-    cancelServiceRequest(requestId: bigint): Promise<void>;
 }
 import type { PaymentMethod as _PaymentMethod, Role as _Role, ServiceRequest as _ServiceRequest, ServiceType as _ServiceType, Status as _Status, Urgency as _Urgency, UserProfile as _UserProfile, UserRole as _UserRole } from "./declarations/backend.did.d.ts";
 export class Backend implements backendInterface {
@@ -234,6 +236,20 @@ export class Backend implements backendInterface {
             }
         } else {
             const result = await this.actor.assignCallerUserRole(arg0, to_candid_UserRole_n1(this._uploadFile, this._downloadFile, arg1));
+            return result;
+        }
+    }
+    async cancelServiceRequest(arg0: bigint): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.cancelServiceRequest(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.cancelServiceRequest(arg0);
             return result;
         }
     }
@@ -545,6 +561,20 @@ export class Backend implements backendInterface {
             return result;
         }
     }
+    async startServiceRequest(arg0: bigint): Promise<void> {
+        if (this.processError) {
+            try {
+                const result = await this.actor.startServiceRequest(arg0);
+                return result;
+            } catch (e) {
+                this.processError(e);
+                throw new Error("unreachable");
+            }
+        } else {
+            const result = await this.actor.startServiceRequest(arg0);
+            return result;
+        }
+    }
     async submitServiceRequest(arg0: ServiceRequest): Promise<bigint> {
         if (this.processError) {
             try {
@@ -570,20 +600,6 @@ export class Backend implements backendInterface {
             }
         } else {
             const result = await this.actor.updateRequestPrice(arg0, arg1);
-            return result;
-        }
-    }
-    async cancelServiceRequest(arg0: bigint): Promise<void> {
-        if (this.processError) {
-            try {
-                const result = await this.actor.cancelServiceRequest(arg0);
-                return result;
-            } catch (e) {
-                this.processError(e);
-                throw new Error("unreachable");
-            }
-        } else {
-            const result = await this.actor.cancelServiceRequest(arg0);
             return result;
         }
     }
@@ -626,6 +642,7 @@ function from_candid_record_n12(_uploadFile: (file: ExternalBlob) => Promise<Uin
     description: string;
     updatedAt: bigint;
     price: bigint;
+    location: string;
 }): {
     id: bigint;
     status: Status;
@@ -637,6 +654,7 @@ function from_candid_record_n12(_uploadFile: (file: ExternalBlob) => Promise<Uin
     description: string;
     updatedAt: bigint;
     price: bigint;
+    location: string;
 } {
     return {
         id: value.id,
@@ -648,7 +666,8 @@ function from_candid_record_n12(_uploadFile: (file: ExternalBlob) => Promise<Uin
         createdAt: value.createdAt,
         description: value.description,
         updatedAt: value.updatedAt,
-        price: value.price
+        price: value.price,
+        location: value.location
     };
 }
 function from_candid_record_n7(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: {
@@ -779,6 +798,7 @@ function to_candid_record_n32(_uploadFile: (file: ExternalBlob) => Promise<Uint8
     description: string;
     updatedAt: bigint;
     price: bigint;
+    location: string;
 }): {
     id: bigint;
     status: _Status;
@@ -790,6 +810,7 @@ function to_candid_record_n32(_uploadFile: (file: ExternalBlob) => Promise<Uint8
     description: string;
     updatedAt: bigint;
     price: bigint;
+    location: string;
 } {
     return {
         id: value.id,
@@ -801,7 +822,8 @@ function to_candid_record_n32(_uploadFile: (file: ExternalBlob) => Promise<Uint8
         createdAt: value.createdAt,
         description: value.description,
         updatedAt: value.updatedAt,
-        price: value.price
+        price: value.price,
+        location: value.location
     };
 }
 function to_candid_variant_n2(_uploadFile: (file: ExternalBlob) => Promise<Uint8Array>, _downloadFile: (file: Uint8Array) => Promise<ExternalBlob>, value: UserRole): {

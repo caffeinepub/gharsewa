@@ -1,11 +1,14 @@
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   Bell,
   Briefcase,
   CheckCircle2,
   Loader2,
   LogOut,
+  MapPin,
+  RefreshCw,
   Star,
   XCircle,
 } from "lucide-react";
@@ -13,6 +16,7 @@ import { AnimatePresence, motion } from "motion/react";
 import { useEffect, useRef, useState } from "react";
 import { toast } from "sonner";
 import { type Rating, type ServiceRequest, Status } from "../backend.d";
+import MapDisplay from "../components/MapDisplay";
 import { useInternetIdentity } from "../hooks/useInternetIdentity";
 import {
   useAcceptRequest,
@@ -65,10 +69,12 @@ interface Props {
 
 export default function ProviderDashboard({ onLogout }: Props) {
   const { identity, clear } = useInternetIdentity();
+  const qc = useQueryClient();
   const {
     data: pendingRequests,
     isLoading: pendingLoading,
     isError: pendingError,
+    dataUpdatedAt,
   } = usePendingRequests();
   const { data: myRequests, isLoading: myLoading } = useProviderRequests();
   const { data: ratings, isLoading: ratingsLoading } = useMyRatings();
@@ -79,6 +85,8 @@ export default function ProviderDashboard({ onLogout }: Props) {
   const [declinedIds, setDeclinedIds] = useState<Set<string>>(new Set());
   const [acceptingId, setAcceptingId] = useState<string | null>(null);
   const [completingId, setCompletingId] = useState<string | null>(null);
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   // Track previous pending count to detect new arrivals
   const prevPendingCount = useRef<number | undefined>(undefined);
@@ -92,6 +100,25 @@ export default function ProviderDashboard({ onLogout }: Props) {
       Notification.requestPermission();
     }
   }, []);
+
+  // Track last updated time
+  useEffect(() => {
+    if (dataUpdatedAt) {
+      setLastUpdated(new Date(dataUpdatedAt));
+    }
+  }, [dataUpdatedAt]);
+
+  // Refetch when provider switches back to the tab
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.visibilityState === "visible") {
+        qc.refetchQueries({ queryKey: ["pendingRequests"] });
+      }
+    };
+    document.addEventListener("visibilitychange", handleVisibility);
+    return () =>
+      document.removeEventListener("visibilitychange", handleVisibility);
+  }, [qc]);
 
   const visiblePending =
     pendingRequests?.filter((r) => !declinedIds.has(r.id.toString())) ?? [];
@@ -110,12 +137,15 @@ export default function ProviderDashboard({ onLogout }: Props) {
 
   // Watch for new pending requests and notify
   useEffect(() => {
+    if (pendingRequests === undefined) return;
     const currentCount = visiblePending.length;
 
-    if (
-      prevPendingCount.current !== undefined &&
-      currentCount > prevPendingCount.current
-    ) {
+    const shouldNotify =
+      (prevPendingCount.current === undefined && currentCount > 0) ||
+      (prevPendingCount.current !== undefined &&
+        currentCount > prevPendingCount.current);
+
+    if (shouldNotify) {
       // Play alert sound via Web Audio API
       try {
         const ctx = new AudioContext();
@@ -158,7 +188,7 @@ export default function ProviderDashboard({ onLogout }: Props) {
     }
 
     prevPendingCount.current = currentCount;
-  }, [visiblePending.length]);
+  }, [visiblePending.length, pendingRequests]);
 
   const activeJobs =
     myRequests?.filter(
@@ -200,6 +230,12 @@ export default function ProviderDashboard({ onLogout }: Props) {
     } finally {
       setCompletingId(null);
     }
+  };
+
+  const handleRefresh = async () => {
+    setIsRefreshing(true);
+    await qc.refetchQueries({ queryKey: ["pendingRequests"] });
+    setIsRefreshing(false);
   };
 
   const handleLogout = () => {
@@ -324,7 +360,32 @@ export default function ProviderDashboard({ onLogout }: Props) {
               transition={{ duration: 0.25 }}
               className="space-y-4"
             >
-              <h2 className="text-lg font-bold">Incoming Service Requests</h2>
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-bold">Incoming Service Requests</h2>
+                <div className="flex items-center gap-2">
+                  {lastUpdated && (
+                    <span className="text-xs text-muted-foreground">
+                      {lastUpdated.toLocaleTimeString("en-NP", {
+                        hour: "2-digit",
+                        minute: "2-digit",
+                        second: "2-digit",
+                      })}
+                    </span>
+                  )}
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7 text-muted-foreground hover:text-terracotta"
+                    onClick={handleRefresh}
+                    disabled={isRefreshing || pendingLoading}
+                    data-ocid="incoming.secondary_button"
+                  >
+                    <RefreshCw
+                      className={`w-4 h-4 ${isRefreshing ? "animate-spin" : ""}`}
+                    />
+                  </Button>
+                </div>
+              </div>
               {pendingLoading ? (
                 <div className="space-y-3" data-ocid="incoming.loading_state">
                   {[1, 2, 3].map((i) => (
@@ -344,6 +405,19 @@ export default function ProviderDashboard({ onLogout }: Props) {
                     Make sure you have completed onboarding and are logged in as
                     a Service Provider.
                   </p>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="mt-3 border-amber-300 text-amber-700 hover:bg-amber-100"
+                    onClick={handleRefresh}
+                    disabled={isRefreshing}
+                    data-ocid="incoming.secondary_button"
+                  >
+                    <RefreshCw
+                      className={`w-3 h-3 mr-1 ${isRefreshing ? "animate-spin" : ""}`}
+                    />
+                    Try Again
+                  </Button>
                 </div>
               ) : visiblePending.length === 0 ? (
                 <div
@@ -430,6 +504,14 @@ export default function ProviderDashboard({ onLogout }: Props) {
                           {badge.label}
                         </span>
                       </div>
+                      {req.location && (
+                        <div className="flex items-center gap-1.5 mb-2 px-3 py-2 bg-terracotta/5 rounded-xl border border-terracotta/20">
+                          <MapPin className="w-4 h-4 text-terracotta flex-shrink-0" />
+                          <span className="text-sm font-semibold text-terracotta">
+                            {req.location}
+                          </span>
+                        </div>
+                      )}
                       <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
                         {req.description}
                       </p>
@@ -509,7 +591,11 @@ export default function ProviderDashboard({ onLogout }: Props) {
                       {[1, 2, 3, 4, 5].map((star) => (
                         <Star
                           key={star}
-                          className={`w-4 h-4 ${star <= Number(r.rating) ? "fill-mustard text-mustard" : "text-border"}`}
+                          className={`w-4 h-4 ${
+                            star <= Number(r.rating)
+                              ? "fill-mustard text-mustard"
+                              : "text-border"
+                          }`}
                         />
                       ))}
                     </div>
@@ -595,6 +681,7 @@ function IncomingRequestCard({
           {badge.label}
         </span>
       </div>
+      {req.location && <MapDisplay location={req.location} height={160} />}
       <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
         {req.description}
       </p>
